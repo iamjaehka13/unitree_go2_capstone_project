@@ -1,0 +1,2 @@
+condition_id,condition_label,checkpoint_iteration,episodes,success_rate,initial_failure_rate,survival_time_mean_s,survival_time_std_s,max_tilt_mean_deg,max_tilt_std_deg,mean_torque_norm,mean_action_norm
+E2,fr_failure_tripod,0,4,0.0,1.0,0.22,0.0,3.665878854205145,2.4646322238721983e-07,20.76530265808105,0.45633378624916077

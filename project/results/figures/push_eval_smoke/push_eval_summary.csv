@@ -1,0 +1,2 @@
+policy_id,eval_init,push_direction,push_level,force_n,impulse_ns,episodes,push_success_rate,survival_success_rate,strict_success_rate,tripod_success_rate,recovery_rate,recovery_time_mean_s,survival_time_mean_s,max_tilt_after_push_mean_deg,max_base_displacement_after_push_mean_m,mean_torque_norm
+E3,default,right,medium,149.17485803604126,14.917485803604126,2,0.0,0.0,0.0,0.0,0.0,0.0,2.6,27.96470606122616,0.34144994616508484,31.292755126953125

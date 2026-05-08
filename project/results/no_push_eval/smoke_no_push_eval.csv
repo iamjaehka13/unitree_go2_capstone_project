@@ -1,0 +1,5 @@
+task,checkpoint,checkpoint_iteration,seed,episode,success,initial_failure,survival_time_s,termination_reason,final_base_height_m,max_roll_deg,max_pitch_deg,mean_torque_norm,mean_action_norm
+Unitree-Go2-FR-Failure-Tripod-Stand,logs/rsl_rl/go2_fr_failure_tripod_stand/2026-05-03_19-15-47/model_0.pt,0,0,0,0,1,0.22,illegal_contact,0.23067551851272583,2.135453521362609,3.6658786407617336,20.765302658081055,0.45633381605148315
+Unitree-Go2-FR-Failure-Tripod-Stand,logs/rsl_rl/go2_fr_failure_tripod_stand/2026-05-03_19-15-47/model_0.pt,0,0,1,0,1,0.22,illegal_contact,0.23067551851272583,2.1354582171176633,3.665879067648557,20.765302658081055,0.4563337564468384
+Unitree-Go2-FR-Failure-Tripod-Stand,logs/rsl_rl/go2_fr_failure_tripod_stand/2026-05-03_19-15-47/model_0.pt,0,0,2,0,1,0.22,illegal_contact,0.23067551851272583,2.135453521362609,3.6658786407617336,20.765302658081055,0.45633381605148315
+Unitree-Go2-FR-Failure-Tripod-Stand,logs/rsl_rl/go2_fr_failure_tripod_stand/2026-05-03_19-15-47/model_0.pt,0,0,3,0,1,0.22,illegal_contact,0.23067551851272583,2.1354582171176633,3.665879067648557,20.765302658081055,0.4563337564468384
