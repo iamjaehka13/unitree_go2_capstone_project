@@ -1,0 +1,51 @@
+experiment: go2_fr_tripod_v1
+
+conditions:
+  - id: E0
+    label: four_leg_stand
+    task: Unitree-Go2-Stand
+    experiment_name: go2_stand
+    failed_leg: none
+    init_pose: default
+
+  - id: E1
+    label: fr_failure_default
+    task: Unitree-Go2-FR-Failure-Default-Stand
+    experiment_name: go2_fr_failure_default_stand
+    failed_leg: FR
+    init_pose: default
+
+  - id: E2
+    label: fr_failure_tripod
+    task: Unitree-Go2-FR-Failure-Tripod-Stand
+    experiment_name: go2_fr_failure_tripod_stand
+    failed_leg: FR
+    init_pose: tripod
+
+  - id: E3
+    label: fr_failure_init_curriculum
+    task: Unitree-Go2-FR-Failure-Init-Curriculum-Stand
+    experiment_name: go2_fr_failure_init_curriculum_stand
+    failed_leg: FR
+    init_pose: tripod_to_default_curriculum
+
+training:
+  pilot_seeds: [0]
+  main_seeds: [0, 1, 2]
+  checkpoint_interval: 100
+  main_num_envs: 4096
+  main_iterations: 5000
+  episode_length_s: 10.0
+
+evaluation:
+  no_push:
+    episodes_per_checkpoint: 20
+    initial_failure_s: 2.0
+    success_horizon_s: 10.0
+    max_roll_pitch_deg: 10.0
+
+  push:
+    push_time_s: 2.0
+    push_duration_s: 0.1
+    directions: [front, back, left, right]
+    magnitudes: [weak, medium, strong]

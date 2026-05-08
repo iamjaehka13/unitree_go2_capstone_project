@@ -20,6 +20,54 @@ if TYPE_CHECKING:
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
 
+def _contact_found(sensor: ContactSensor) -> torch.Tensor:
+  assert sensor.data.found is not None
+  found = sensor.data.found
+  if found.dim() == 3 and found.shape[-1] == 1:
+    found = found.squeeze(-1)
+  return found > 0
+
+
+def _contact_force_norm(sensor: ContactSensor) -> torch.Tensor:
+  assert sensor.data.force is not None
+  force = sensor.data.force
+  if force.dim() == 4 and force.shape[-2] == 1:
+    force = force.squeeze(-2)
+  return torch.linalg.norm(force, dim=-1)
+
+
+def _cross2(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+  return a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0]
+
+
+def _support_triangle_metrics(
+  support_xy: torch.Tensor,
+  com_xy: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+  """Return area, minimum pairwise foot distance, and signed COM margin."""
+  a = support_xy[:, 0, :]
+  b = support_xy[:, 1, :]
+  c = support_xy[:, 2, :]
+  ab = b - a
+  bc = c - b
+  ca = a - c
+  signed_area2 = _cross2(ab, c - a)
+  area = 0.5 * torch.abs(signed_area2)
+
+  ab_len = torch.linalg.norm(ab, dim=1)
+  bc_len = torch.linalg.norm(bc, dim=1)
+  ca_len = torch.linalg.norm(ca, dim=1)
+  min_foot_distance = torch.minimum(torch.minimum(ab_len, bc_len), ca_len)
+
+  orientation = torch.where(signed_area2 >= 0.0, 1.0, -1.0)
+  eps = 1.0e-6
+  dist_ab = orientation * _cross2(ab, com_xy - a) / torch.clamp(ab_len, min=eps)
+  dist_bc = orientation * _cross2(bc, com_xy - b) / torch.clamp(bc_len, min=eps)
+  dist_ca = orientation * _cross2(ca, com_xy - c) / torch.clamp(ca_len, min=eps)
+  com_margin = torch.minimum(torch.minimum(dist_ab, dist_bc), dist_ca)
+  return area, min_foot_distance, com_margin
+
+
 def track_linear_velocity(
   env: ManagerBasedRlEnv,
   std: float,
@@ -84,6 +132,19 @@ def body_orientation_l2(
   return xy_squared
 
 
+def base_height_l2(
+  env: ManagerBasedRlEnv,
+  target_height: float,
+  std: float,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Penalize root height deviation from a standing target."""
+  asset: Entity = env.scene[asset_cfg.name]
+  height = asset.data.root_link_pos_w[:, 2]
+  env.extras["log"]["Metrics/base_height_mean"] = torch.mean(height)
+  return torch.square((height - target_height) / std)
+
+
 def self_collision_cost(
   env: ManagerBasedRlEnv,
   sensor_name: str,
@@ -104,6 +165,26 @@ def self_collision_cost(
     return hit.sum(dim=-1).float()  # [B]
   assert data.found is not None
   return data.found.squeeze(-1)
+
+
+def nonfoot_ground_contact_penalty(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  force_scale: float = 10.0,
+) -> torch.Tensor:
+  """Penalize any non-foot ground support, including calf/thigh/body contact."""
+  sensor: ContactSensor = env.scene[sensor_name]
+  found = _contact_found(sensor).reshape(env.num_envs, -1)
+  contact_any = torch.any(found, dim=1).float()
+  if sensor.data.force is not None:
+    force_norm = _contact_force_norm(sensor).reshape(env.num_envs, -1)
+    force_sum = torch.sum(force_norm, dim=1)
+  else:
+    force_sum = torch.zeros(env.num_envs, device=env.device, dtype=torch.float32)
+
+  env.extras["log"]["Metrics/nonfoot_ground_contact_mean"] = torch.mean(contact_any)
+  env.extras["log"]["Metrics/nonfoot_ground_force_mean"] = torch.mean(force_sum)
+  return contact_any + (force_sum / force_scale)
 
 
 def body_angular_velocity_penalty(
@@ -294,6 +375,132 @@ def feet_slip(
   return cost
 
 
+def disabled_foot_contact_penalty(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  foot_index: int,
+  force_scale: float = 50.0,
+) -> torch.Tensor:
+  """Penalize contact and support force on a failed/passive foot."""
+  contact_sensor: ContactSensor = env.scene[sensor_name]
+  in_contact = _contact_found(contact_sensor)[:, foot_index].float()
+  force_norm = _contact_force_norm(contact_sensor)[:, foot_index]
+  env.extras["log"]["Metrics/disabled_foot_contact_mean"] = torch.mean(in_contact)
+  env.extras["log"]["Metrics/disabled_foot_force_mean"] = torch.mean(force_norm)
+  return in_contact + (force_norm / force_scale)
+
+
+def disabled_foot_clearance_reward(
+  env: ManagerBasedRlEnv,
+  foot_index: int,
+  min_height: float,
+  max_height: float,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Reward keeping the failed foot visibly off the ground."""
+  asset: Entity = env.scene[asset_cfg.name]
+  foot_z = asset.data.site_pos_w[:, asset_cfg.site_ids[foot_index], 2]
+  clearance = torch.clamp(
+    (foot_z - min_height) / max(max_height - min_height, 1.0e-6),
+    min=0.0,
+    max=1.0,
+  )
+  env.extras["log"]["Metrics/disabled_foot_height_mean"] = torch.mean(foot_z)
+  env.extras["log"]["Metrics/disabled_foot_clearance_reward_mean"] = torch.mean(
+    clearance
+  )
+  return clearance
+
+
+def required_feet_contact_reward(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  foot_indices: tuple[int, ...],
+) -> torch.Tensor:
+  """Reward all required support feet being in contact with the ground."""
+  contact_sensor: ContactSensor = env.scene[sensor_name]
+  in_contact = _contact_found(contact_sensor)[:, list(foot_indices)]
+  all_support_feet = torch.all(in_contact, dim=1).float()
+  env.extras["log"]["Metrics/support_feet_contact_mean"] = torch.mean(all_support_feet)
+  return all_support_feet
+
+
+def required_feet_load_reward(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  foot_indices: tuple[int, ...],
+  min_force: float,
+  balance_scale: float = 0.35,
+) -> torch.Tensor:
+  """Reward all support feet carrying meaningful, not wildly uneven, load."""
+  contact_sensor: ContactSensor = env.scene[sensor_name]
+  force_norm = _contact_force_norm(contact_sensor)[:, list(foot_indices)]
+  min_support_force = torch.min(force_norm, dim=1)[0]
+  mean_support_force = torch.mean(force_norm, dim=1)
+  force_std = torch.std(force_norm, dim=1, unbiased=False)
+  load_score = torch.clamp(min_support_force / min_force, min=0.0, max=1.0)
+  balance_error = force_std / torch.clamp(mean_support_force, min=1.0)
+  balance_score = torch.exp(-torch.square(balance_error / balance_scale))
+  reward = 0.7 * load_score + 0.3 * balance_score
+
+  env.extras["log"]["Metrics/support_min_force_mean"] = torch.mean(min_support_force)
+  env.extras["log"]["Metrics/support_mean_force_mean"] = torch.mean(mean_support_force)
+  env.extras["log"]["Metrics/support_load_reward_mean"] = torch.mean(reward)
+  return reward
+
+
+def required_feet_stance_tracking(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  foot_indices: tuple[int, ...],
+  velocity_scale: float = 0.25,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Dense tripod stance reward adapted from stance-phase gait tracking."""
+  contact_sensor: ContactSensor = env.scene[sensor_name]
+  asset: Entity = env.scene[asset_cfg.name]
+  in_contact = _contact_found(contact_sensor)[:, list(foot_indices)].float()
+  foot_vel_xy = asset.data.site_lin_vel_w[:, asset_cfg.site_ids, :2]
+  support_vel_xy = foot_vel_xy[:, list(foot_indices), :]
+  slip_speed_sq = torch.sum(torch.square(support_vel_xy), dim=-1)
+  stance_quality = in_contact * torch.exp(-slip_speed_sq / velocity_scale)
+  all_support_feet = torch.all(in_contact.bool(), dim=1).float()
+
+  env.extras["log"]["Metrics/support_feet_contact_mean"] = torch.mean(all_support_feet)
+  env.extras["log"]["Metrics/support_feet_contact_fraction"] = torch.mean(in_contact)
+  env.extras["log"]["Metrics/support_feet_stance_quality_mean"] = torch.mean(
+    stance_quality
+  )
+  return torch.mean(stance_quality, dim=1)
+
+
+def required_feet_support_geometry(
+  env: ManagerBasedRlEnv,
+  foot_indices: tuple[int, ...],
+  min_area: float,
+  min_foot_distance: float,
+  com_margin_scale: float = 0.02,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Reward a wide tripod support polygon with the base projection inside it."""
+  asset: Entity = env.scene[asset_cfg.name]
+  foot_xy = asset.data.site_pos_w[:, asset_cfg.site_ids, :2]
+  support_xy = foot_xy[:, list(foot_indices), :]
+  com_xy = asset.data.root_link_pos_w[:, :2]
+  area, min_distance, com_margin = _support_triangle_metrics(support_xy, com_xy)
+
+  area_score = torch.clamp(area / min_area, min=0.0, max=1.0)
+  distance_score = torch.clamp(min_distance / min_foot_distance, min=0.0, max=1.0)
+  margin_score = torch.sigmoid(com_margin / com_margin_scale)
+  reward = (area_score + distance_score + margin_score) / 3.0
+
+  env.extras["log"]["Metrics/support_triangle_area_mean"] = torch.mean(area)
+  env.extras["log"]["Metrics/support_min_foot_distance_mean"] = torch.mean(min_distance)
+  env.extras["log"]["Metrics/support_com_margin_mean"] = torch.mean(com_margin)
+  env.extras["log"]["Metrics/support_geometry_reward_mean"] = torch.mean(reward)
+  return reward
+
+
 def soft_landing(
   env: ManagerBasedRlEnv,
   sensor_name: str,
@@ -425,4 +632,3 @@ def stand_still(
             scale = (total_command <= command_threshold).float()
             reward *= scale
     return reward
-

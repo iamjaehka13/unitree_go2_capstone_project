@@ -1,4 +1,10 @@
 from .unitree_go2.go2_constants import (
+  get_go2_fr_failure_robot_cfg as get_go2_fr_failure_robot_cfg,
+)
+from .unitree_go2.go2_constants import (
+  get_go2_fr_locked_tucked_robot_cfg as get_go2_fr_locked_tucked_robot_cfg,
+)
+from .unitree_go2.go2_constants import (
   get_go2_robot_cfg as get_go2_robot_cfg,
 )
 
