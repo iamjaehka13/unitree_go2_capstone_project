@@ -13,10 +13,12 @@
 | 순서 | 파일 | 목적 |
 | --- | --- | --- |
 | 1 | `docs/project_handoff_for_teammate.md` | 현재 프로젝트 상태, 실험군, 영상/결과 위치를 한 번에 파악 |
-| 2 | `docs/experiment_scope_v1.md` | 왜 E0/E1/E2/E3, strict, clean, locked/tucked 조건이 생겼는지 확인 |
-| 3 | `docs/current_v1_results_seed0.md` | seed 0 결과와 보고서에서 사용할 해석 확인 |
-| 4 | `docs/training_env_reward_plan.md` | reward, termination, clean tripod 기준 확인 |
-| 5 | `docs/push_visualization_plan.md` | 외란 영상과 공/화살표 시각화 기준 확인 |
+| 2 | `docs/full_project_explanation_ko.md` | 연구 배경, 제어 구조, 실험 설계, 결과 해석을 자세히 확인 |
+| 3 | `docs/presentation_outline_ko.md` | PPT 흐름과 슬라이드별 말할 내용 확인 |
+| 4 | `docs/experiment_scope_v1.md` | 왜 E0/E1/E2/E3, strict, clean, locked/tucked 조건이 생겼는지 확인 |
+| 5 | `docs/current_v1_results_seed0.md` | seed 0 결과와 보고서에서 사용할 해석 확인 |
+| 6 | `docs/training_env_reward_plan.md` | reward, termination, clean tripod 기준 확인 |
+| 7 | `docs/push_visualization_plan.md` | 외란 영상과 공/화살표 시각화 기준 확인 |
 
 영상과 그림도 Git에 포함되어 있다. 발표용으로 먼저 볼 파일은 아래다.
 
@@ -36,6 +38,8 @@
 세부 정의:
 
 - `docs/project_handoff_for_teammate.md`: 팀원이 바로 볼 수 있는 현재 상태 요약과 실행/자료 위치
+- `docs/full_project_explanation_ko.md`: 프로젝트 전체 설명, 실험 설계, 결과 해석, 한계와 다음 작업
+- `docs/presentation_outline_ko.md`: 졸업프로젝트 발표용 슬라이드 구성과 발표 멘트 초안
 - `docs/torque_failure_model.md`: FR/RR 한 다리 전체 torque 0 고장 모델
 - `docs/tripod_init_pose_fr.md`: FR 고장 조건의 tripod init pose 후보
 - `docs/push_visualization_plan.md`: 외란 평가 발표용 영상/그래프 산출물 계획
