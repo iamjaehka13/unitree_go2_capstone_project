@@ -6,8 +6,36 @@
 
 범위를 줄인 실제 실행 기준은 `docs/experiment_scope_v1.md`를 따른다. 이 README는 전체 청사진이고, v1 문서는 첫 번째로 완성할 최소 실험 프로토콜이다. 현재 seed 0 본 실험은 E0/E1/E2/E3 모두 `4096` parallel env, `5000` PPO iterations로 완료했다.
 
+## 팀원이 먼저 보면 좋은 순서
+
+처음 보는 사람은 아래 순서로 읽으면 된다.
+
+| 순서 | 파일 | 목적 |
+| --- | --- | --- |
+| 1 | `docs/project_handoff_for_teammate.md` | 현재 프로젝트 상태, 실험군, 영상/결과 위치를 한 번에 파악 |
+| 2 | `docs/experiment_scope_v1.md` | 왜 E0/E1/E2/E3, strict, clean, locked/tucked 조건이 생겼는지 확인 |
+| 3 | `docs/current_v1_results_seed0.md` | seed 0 결과와 보고서에서 사용할 해석 확인 |
+| 4 | `docs/training_env_reward_plan.md` | reward, termination, clean tripod 기준 확인 |
+| 5 | `docs/push_visualization_plan.md` | 외란 영상과 공/화살표 시각화 기준 확인 |
+
+영상과 그림도 Git에 포함되어 있다. 발표용으로 먼저 볼 파일은 아래다.
+
+| 용도 | 우선 확인 파일 |
+| --- | --- |
+| clean 3족 지지 no-push 영상 | `project/videos/clean_tripod/E2C_tripod_clean_no_push_final.mp4` |
+| locked/tucked 보조 영상 | `project/videos/clean_tripod/E4L_locked_tucked_clean_no_push.mp4` |
+| push side-by-side 영상 | `project/videos/push/FR_E1_E2_E3_medium_right_calibrated_side_by_side.mp4` |
+| E2 push 성공 예시 | `project/videos/push/E2_tripod_medium_right_calibrated_success.mp4` |
+| E2 push 실패 예시 | `project/videos/push/E2_tripod_medium_front_calibrated_fail.mp4` |
+| clean no-push 평가 CSV | `project/results/no_push_eval/no_push_eval_v5_clean_presentation_4096_5000_seed0.csv` |
+| locked/tucked 평가 CSV | `project/results/no_push_eval/no_push_eval_v6_locked_tucked_presentation_4096_5000_seed0.csv` |
+| calibrated push 평가 CSV | `project/results/push_eval/push_eval_v2_calibrated_final_seed0.csv` |
+
+주의할 점은 v2 push 영상과 v5 clean standing 영상의 목적이 다르다는 것이다. v2 push 영상은 외란 시각화와 초기 robustness 분석용이고, v5 clean 영상은 "발바닥 세 개로 깔끔하게 서는가"를 보여주는 발표용 standing 결과다. E4L은 순수 passive torque-zero 조건이 아니라, 고장 다리를 접힌 상태로 기계적으로 lock한 보조 실험이다.
+
 세부 정의:
 
+- `docs/project_handoff_for_teammate.md`: 팀원이 바로 볼 수 있는 현재 상태 요약과 실행/자료 위치
 - `docs/torque_failure_model.md`: FR/RR 한 다리 전체 torque 0 고장 모델
 - `docs/tripod_init_pose_fr.md`: FR 고장 조건의 tripod init pose 후보
 - `docs/push_visualization_plan.md`: 외란 평가 발표용 영상/그래프 산출물 계획

@@ -344,7 +344,9 @@ E4L final no-push presentation-clean 평가 결과:
 
 ## 8. 현재 결론
 
-현재 seed 0 결과는 다음 결론을 지지한다.
+현재 seed 0 결과는 실험 단계를 나누어서 해석해야 한다.
+
+v2 E0/E1/E2/E3 결과는 초기 자세 prior와 PPO exploration bottleneck을 보여주는 메인 분석 결과다.
 
 1. FR 전체 다리 actuator failure 상황에서 default standing init만으로는 PPO가 안정 3족 지지 전략을 찾지 못했다.
 2. 기구학적 tripod init은 초기 실패율을 낮추고, E2 policy가 빠르게 안정 3족 지지를 학습하게 했다.
@@ -357,20 +359,43 @@ E4L final no-push presentation-clean 평가 결과:
 
 > 한 다리 고장 상황에서 기구학적 자세 prior는 PPO의 초기 탐색 실패를 줄이고 sample efficiency를 개선한다. 더 나아가 tripod-to-default reset curriculum을 사용하면 단순 tripod 자세 특화가 아니라 default init에서 균형을 회복하는 policy 학습도 가능하다.
 
-다만 v2 결과만으로 "기구학적으로 올바른 3족 지지"를 달성했다고 주장하지 않는다. 이 부분은 v3 strict tripod task로 다시 검증한다.
+v5 clean 결과는 사람이 보기에도 납득 가능한 foot-only 3족 지지를 만들기 위해 reward/eval 기준을 강화한 발표용 standing 결과다. v5에서는 foot contact sensor order를 `FL, FR, RL, RR`로 수정했고, `FR` foot clearance, `FL/RL/RR` support foot load, support geometry, non-foot contact 금지를 함께 본다.
+
+v5 clean presentation 평가:
+
+| 조건 | episodes | survival | tripod success | FR contact fraction | support min force | support area | COM margin | non-foot contact |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| E1C default clean | 40 | 1.00 | 1.00 | 0.029 | 45.0 N | 0.089 m2 | 0.100 m | 0.00 |
+| E2C tripod clean | 20 | 1.00 | 1.00 | 0.026 | 45.1 N | 0.084 m2 | 0.100 m | 0.00 |
+
+따라서 v5 clean 결과는 "기준을 강화해도 foot-only tripod stance를 만들 수 있다"는 발표용 증거로 사용한다. 다만 v5는 reward와 eval 기준이 v2와 달라진 재학습 결과이므로, v2 E1/E2/E3의 초기 자세 효과 분석을 그대로 대체한다고 말하지 않는다. clean reward 기준에서도 init 효과를 더 엄밀히 말하려면 E1C/E2C/E3C의 learning curve와 checkpoint별 초기 실패율을 별도로 정리해야 한다.
+
+E4L locked/tucked 결과는 발표 영상 품질을 높이기 위한 보조 실험이다. E4L은 FR actuator torque를 0으로 두지만 FR joint range를 tuck pose 주변으로 제한하므로, passive torque-zero 메인 실험과 직접 섞지 않는다.
+
+E4L presentation 평가:
+
+| 조건 | episodes | survival | tripod success | FR contact fraction | FR foot height | support min force | support area | COM margin | non-foot contact |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| E4L locked/tucked | 20 | 1.00 | 1.00 | 0.00 | 0.092 m | 47.4 N | 0.066 m2 | 0.101 m | 0.00 |
+
+발표에서는 다음처럼 정리한다.
+
+> v2는 초기 자세 prior와 PPO exploration 차이를 보여주는 분석 실험이고, v5/v6은 영상과 평가 기준을 강화해 foot-only clean tripod stance를 확인한 후속 실험이다. 외란 강건성은 아직 제한적이므로, robust policy까지 주장하려면 push-aware training 또는 push randomization이 필요하다.
 
 ## 9. 남은 작업
 
-현재 결과만으로 no-push standing 결론은 충분히 만들 수 있다. 발표 완성도를 위해 다음을 추가한다.
+현재 결과만으로 no-push standing과 clean stance 발표 흐름은 만들 수 있다. 남은 작업은 "논리 보강"과 "외란 시각화 보강"이다.
 
 | 작업 | 목적 |
 | --- | --- |
-| E1S/E2S/E3S strict 학습 | support polygon 기준을 만족하는 진짜 tripod stance 재학습 |
-| strict no-push eval | v2 local optimum과 v3 strict tripod 결과 분리 |
-| strict final policy 영상 | 사람이 보기에도 3발로 제대로 서는지 확인 |
+| clean policy push 영상 생성 | foot-only clean stance와 공/화살표 push overlay를 같은 영상에서 보여주기 |
+| E1C/E2C/E3C learning curve 정리 | clean reward 기준에서도 init pose가 학습 속도에 주는 영향을 확인 |
+| E2C와 E4L 영상/수치 비교 | passive torque-zero와 locked/tucked extension의 차이를 명확히 설명 |
 | push-aware training 또는 push DR pilot | 외란 강건성이 부족한 이유를 보완 |
-| side-by-side comparison video 보강 | 현재 right-medium 비교 영상은 생성 완료. 필요하면 weak/strong 또는 front/back도 추가 |
 | seed 추가 | PPO 랜덤성 방어. 시간이 부족하면 seed 0 main + 추가 seed pilot로 축소 |
+| PPT용 figure 선별 | 결과가 많으므로 핵심 그림과 영상을 좁혀 발표 흐름을 정리 |
+
+현재 GitHub에는 발표 확인에 필요한 CSV, figure, video가 올라가 있다. 대용량 raw training log와 `logs/` checkpoint 폴더는 제외했다.
 
 ## 10. 이전 Pilot 결과의 위치
 
